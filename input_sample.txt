@@ -1,0 +1,8 @@
+    Input: {"image":imagefile}
+    
+    returns:
+        {
+            "localization":list[{"confidence":float,
+                                "label_name":string,
+                                "bbox":[xmin,ymin,xmax,ymax]}]
+        }
