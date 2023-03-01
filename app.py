@@ -22,45 +22,92 @@ grid_fs = gridfs.GridFS(db)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Loading TROCR')
 
+import warnings
+from contextlib import contextmanager
+from transformers import MBartTokenizer, ViTImageProcessor, XLMRobertaTokenizer
+from transformers import ProcessorMixin
+
+
+class CustomOCRProcessor(ProcessorMixin):
+    attributes = ["image_processor", "tokenizer"]
+    image_processor_class = "AutoImageProcessor"
+    tokenizer_class = "AutoTokenizer"
+
+    def __init__(self, image_processor=None, tokenizer=None, **kwargs):
+        if "feature_extractor" in kwargs:
+            warnings.warn(
+                "The `feature_extractor` argument is deprecated and will be removed in v5, use `image_processor`"
+                " instead.",
+                FutureWarning,
+            )
+            feature_extractor = kwargs.pop("feature_extractor")
+
+        image_processor = image_processor if image_processor is not None else feature_extractor
+        if image_processor is None:
+            raise ValueError("You need to specify an `image_processor`.")
+        if tokenizer is None:
+            raise ValueError("You need to specify a `tokenizer`.")
+
+        super().__init__(image_processor, tokenizer)
+        self.current_processor = self.image_processor
+        self._in_target_context_manager = False
+
+    def __call__(self, *args, **kwargs):
+        # For backward compatibility
+        if self._in_target_context_manager:
+            return self.current_processor(*args, **kwargs)
+
+        images = kwargs.pop("images", None)
+        text = kwargs.pop("text", None)
+        if len(args) > 0:
+            images = args[0]
+            args = args[1:]
+
+        if images is None and text is None:
+            raise ValueError("You need to specify either an `images` or `text` input to process.")
+
+        if images is not None:
+            inputs = self.image_processor(images, *args, **kwargs)
+        if text is not None:
+            encodings = self.tokenizer(text, **kwargs)
+
+        if text is None:
+            return inputs
+        elif images is None:
+            return encodings
+        else:
+            inputs["labels"] = encodings["input_ids"]
+            return inputs
+
+    def batch_decode(self, *args, **kwargs):
+        return self.tokenizer.batch_decode(*args, **kwargs)
+
+    def decode(self, *args, **kwargs):
+        return self.tokenizer.decode(*args, **kwargs)
+
+from transformers import TrOCRProcessor
+
+image_processor = ViTImageProcessor.from_pretrained(
+    'microsoft/swin-base-patch4-window7-224-in22k'
+)
+tokenizer = MBartTokenizer.from_pretrained(
+    'facebook/mbart-large-50'
+)
+processortext = CustomOCRProcessor(image_processor,tokenizer)
 
 
 
-processor = TrOCRProcessor.from_pretrained("microsoft/trocr-large-handwritten") 
-processorUrdu = TrOCRProcessor.from_pretrained("microsoft/trocr-large-handwritten") 
-processorComb = TrOCRProcessor.from_pretrained("microsoft/trocr-large-handwritten") 
-model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-large-handwritten").to(device)
-modelUrdu = VisionEncoderDecoderModel.from_pretrained("/Users/musadac/Downloads/NewWeight5").to(device)
-modelCombined = VisionEncoderDecoderModel.from_pretrained("/Users/musadac/Downloads/EngUrdu5").to(device)
+model = VisionEncoderDecoderModel.from_pretrained("/Users/musadac/Downloads/LongUrduEngOver").to(device)
 
-model.config.decoder_start_token_id = processor.tokenizer.cls_token_id
-model.config.pad_token_id = processor.tokenizer.pad_token_id
+model.config.decoder_start_token_id = processortext.tokenizer.cls_token_id
+model.config.pad_token_id = processortext.tokenizer.pad_token_id
 model.config.vocab_size = model.config.decoder.vocab_size
-model.config.eos_token_id = processor.tokenizer.sep_token_id
+model.config.eos_token_id = processortext.tokenizer.sep_token_id
 model.config.max_length = 10
 model.config.early_stopping = True
 model.config.no_repeat_ngram_size = 3
 model.config.length_penalty = 2.0
 model.config.num_beams = 3
-
-modelUrdu.config.decoder_start_token_id = processorUrdu.tokenizer.cls_token_id
-modelUrdu.config.pad_token_id = processorUrdu.tokenizer.pad_token_id
-modelUrdu.config.vocab_size = modelUrdu.config.decoder.vocab_size
-modelUrdu.config.eos_token_id = processorUrdu.tokenizer.sep_token_id
-modelUrdu.config.max_length = 10
-modelUrdu.config.early_stopping = True
-modelUrdu.config.no_repeat_ngram_size = 3
-modelUrdu.config.length_penalty = 2.0
-modelUrdu.config.num_beams = 3
-
-modelCombined.config.decoder_start_token_id = processorComb.tokenizer.cls_token_id
-modelCombined.config.pad_token_id = processorComb.tokenizer.pad_token_id
-modelCombined.config.vocab_size = modelCombined.config.decoder.vocab_size
-modelCombined.config.eos_token_id = processorComb.tokenizer.sep_token_id
-modelCombined.config.max_length = 10
-modelCombined.config.early_stopping = True
-modelCombined.config.no_repeat_ngram_size = 3
-modelCombined.config.length_penalty = 2.0
-modelCombined.config.num_beams = 3
 #microsoft/trocr-large-handwritten
 #./trocr-trained-best
 print('Loaded TROCR ✅')
@@ -176,27 +223,14 @@ def get_text():
     generated_text = []
     count = 0
     for i in allimg:
-        
+        pixel_values = processortext(i.convert("RGB"), return_tensors="pt").pixel_values
+        generated_ids = model.generate(pixel_values.to(device))
+        generated_text.append(processortext.batch_decode(generated_ids, skip_special_tokens=True)[0])
         # if(temp['localization'][count]['label_name'] == 'English'):
         #     generated_ids = model.generate(pixel_values.to(device))
         # else:
         #     generated_ids = modelUrdu.generate(pixel_values.to(device))
         # generated_text.append(processor.batch_decode(generated_ids, skip_special_tokens=True)[0])
-        generatedtext = ""
-        pixel_values = processor(i.convert("RGB"), return_tensors="pt").pixel_values
-        generated_ids = model.generate(pixel_values.to(device))
-        generatedtext += processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        generatedtext += ", "
-
-        pixel_values = processorComb(i.convert("RGB"), return_tensors="pt").pixel_values
-        generated_ids = modelCombined.generate(pixel_values.to(device))
-        generatedtext += processorComb.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        generatedtext += ", "
-
-        pixel_values = processorUrdu(i.convert("RGB"), return_tensors="pt").pixel_values
-        generated_ids = modelUrdu.generate(pixel_values.to(device))
-        generatedtext += processorUrdu.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        generated_text.append(generatedtext)
     products.update_one({"_id" : temp['_id']}, {"$set" : {"generated_text" :generated_text}})
     return {'generated_text':generated_text}
 
@@ -277,6 +311,61 @@ def prediction():
     
     return {"predictions":predictions,"bbox":bboxes,"text":text}
 
+
+@app.route("/extract_text_entities",methods = ['POST'])
+def endtoend():
+    products = db.docigize
+    data = request.json
+    data = products.find({'_id':ObjectId(data['id'])})
+    temp = ""
+    for i in data:
+        temp = i
+    image = grid_fs.get(temp['id'])
+    image = Image.open(io.BytesIO(image.read()))
+    allimg = cropimages(image, temp['localization'])
+    generated_text = []
+    count = 0
+    for i in allimg:
+        pixel_values = processortext(i.convert("RGB"), return_tensors="pt").pixel_values
+        generated_ids = model.generate(pixel_values.to(device))
+        generated_text.append(processortext.batch_decode(generated_ids, skip_special_tokens=True)[0])
+
+
+
+    img_width,img_height = image.width,image.height
+    
+    text =  generated_text
+    bboxes = []
+    for i in temp['localization']:
+        bboxes.append(i['bbox'])
+    
+    normalize_bbox = [normalize_the_bbox([bbox[0],bbox[1],bbox[0]+bbox[2],bbox[1]+bbox[3]],img_width=img_width,img_height=img_height) for bbox in bboxes]
+    
+    tmp_labels = [1 for i in range(len(text))]
+    print(len(bboxes))
+    encoding = processor(image.convert("RGB"), text, boxes=normalize_bbox, word_labels=tmp_labels, return_tensors="pt", max_length =max_length, padding ="max_length",truncation=True)
+    
+    lb = encoding.pop("labels")
+    
+    
+    for k,v in encoding.items():
+        encoding[k] = v.to(device)
+        
+        
+    encoding['input_ids'] = encoding['input_ids'].long() 
+    encoding['bbox'] = encoding['bbox'].long()
+    
+    output = layoutmodel(**encoding) 
+    
+    
+    pred = output.logits.argmax(-1).detach().cpu()[0]
+    
+    
+    predictions =[ idx2lb[k.item()] for k,v in zip(pred,lb[0]) if v != -100 ]
+    products.update_one({"_id" : temp['_id']}, {"$set" : {"generated_text" :generated_text}})
+    products.update_one({"_id" : temp['_id']}, {"$set" : {"predictions" :predictions}})
+    
+    return {"predictions":predictions,"bbox":bboxes,"text":text}
 
 
 
