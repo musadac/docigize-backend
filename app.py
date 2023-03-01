@@ -124,7 +124,7 @@ labels = ['B-MEDICINE DOSE','I-MEDICINE DOSE','B-DIAGNOSIS','I-DIAGNOSIS','B-HIS
                 'B-TEMP','B-WEIGHT']
 
 
-label2color = {lb:f"rgb({random.randint(0,255)},{random.randint(0,255)},{random.randint(0,255)})"  for lb in labels}
+label2color = {lb:f"rgb({random.randint(0,255)},{random.randint(0,255)},{random.randint(0,255)},0.3)"  for lb in labels}
 label2idx ={lb:idx  for idx,lb in enumerate(labels)}
 idx2lb ={idx:lb  for idx,lb in enumerate(labels)}
 num_labels = len(labels)
@@ -374,7 +374,9 @@ def endtoend():
     
     return {"predictions":predictions,"bbox":bboxes,"text":text,"colors":colors}
 
-
+@app.route("/hit",methods = ['POST'])
+def hit():
+    return {}
 
 if __name__ == "__main__":
     app.run(port = 5000,debug = True,)
