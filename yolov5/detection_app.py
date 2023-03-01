@@ -62,6 +62,13 @@ def fetch_bounding_box():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)  
 
         result = run(source=image_path,imgsz=imgsz,conf_thres=conf_thres)
+        
+        try:
+            result = sorted(sorted(result,key= lambda x: x['bbox'][0]),key = lambda x: x['bbox'][1]) ## Sorting the yolo results
+        except:
+            print(f"Error in sorting")
+            print(f"Using unsorted values")
+        
         id = saveImage(image_path,request.form['email'],result)
         os.remove(image_path)
         return {"_id":str(id),"localization":result}
