@@ -65,6 +65,77 @@ modelCombined.config.num_beams = 3
 #./trocr-trained-best
 print('Loaded TROCR ✅')
 
+################################### Layout LM requirements #################################################################
+from transformers import LayoutLMv3ForTokenClassification
+from transformers import AutoProcessor
+
+#### Some necessary variables  ################
+
+labels = ['B-MEDICINE DOSE','I-MEDICINE DOSE','B-DIAGNOSIS','I-DIAGNOSIS','B-HISTORY','I-HISTORY',\
+            'B-BP','B-MEDICINE TYPE','B-MEDICINE NAME','B-MEDICINE POWER','B-NAME','B-GENDER','B-DATE','B-AGE',\
+                'B-TEMP','B-WEIGHT']
+
+label2idx ={lb:idx  for idx,lb in enumerate(labels)}
+idx2lb ={idx:lb  for idx,lb in enumerate(labels)}
+num_labels = len(labels)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+model_path = "model_layout-1"    ### LayoutLM path
+max_length = 128
+
+#################################################
+
+
+## Utility function
+def normalize_the_bbox(bbox,img_width,img_height):
+    """_summary_
+
+    Args:
+        bbox (_array_): _the array contains coordinates like (xmin,ymin,xmax,ymax)_
+
+    Returns:
+        _array_: _returns normalized arrays_
+        
+    """
+    if bbox[2]>=img_width:
+        bbox[2] = img_width-1
+    if bbox[3] >=img_height:
+        bbox[3] = img_width-1
+
+    if bbox[0] <=0:
+        bbox[0] = 1
+    
+    if bbox[1] <=0:
+        bbox[1] = 1
+    
+    bbox = [
+        (bbox[0]*1000)/img_width,
+        (bbox[1]*1000)/img_height,
+        (bbox[2]*1000)/img_width,
+        (bbox[3]*1000)/img_height
+    ]
+    
+    for i in range(len(bbox)):
+        if bbox[i]>=1000:
+            bbox[i]=999
+        if bbox[i] <=0:
+            bbox[i] = 1
+    
+    return bbox
+
+
+
+### Initializing the model ####
+processor = AutoProcessor.from_pretrained(model_path, apply_ocr=False)
+
+layoutmodel = LayoutLMv3ForTokenClassification.from_pretrained(model_path,
+                                                          num_labels=num_labels)
+
+
+layoutmodel.to(device)
+print("Loading the layout LM model")
+
+##############################################################################################################################
 @app.route('/login',methods = ['POST', 'GET'])
 def login():
     products = db.creds
@@ -146,6 +217,65 @@ def get_image():
         i['image'] = image_data
     return {'alldoc': alldoc}
 
+
+### Layout LM API
+@app.route("/extract_entities",methods = ['POST'])
+def prediction():
+    
+    """_Input_
+    request ={"entity_recogn":
+                    {
+                        "image" :image_file
+                        "bbox":array of bounding boxxes with (xmin,ymin,xmax,ymax) format
+                        "text": array of text corresponding to the bounding box
+                    }
+    }
+
+    Returns:
+        _type_: _description_
+    """
+    input_obj = request.json['entity_recogn']  ### Fetching the object
+    
+    ## Reading image as base64 bytes
+    im_b64 = input_obj["image"]
+    img_bytes = base64.b64decode(im_b64.encode('utf-8'))
+
+    # convert bytes data to PIL Image object
+    image_file = Image.open(io.BytesIO(img_bytes))
+    
+    
+    img_width,img_height = image_file.width,image_file.height
+    
+    text =  input_obj['text']
+    bboxes =  input_obj['bbox']
+    
+    normalize_bbox = [normalize_the_bbox([bbox[0],bbox[1],bbox[0]+bbox[2],bbox[1]+bbox[3]],img_width=img_width,img_height=img_height) for bbox in bboxes]
+    
+    tmp_labels = [1 for i in range(len(text))]
+    
+    encoding = processor(image_file, text, boxes=normalize_bbox, word_labels=tmp_labels, return_tensors="pt",\
+                                max_length =max_length, padding ="max_length",truncation=True)
+    
+    lb = encoding.pop("labels")
+    
+    
+    for k,v in encoding.items():
+        encoding[k] = v.to(device)
+        
+        
+    encoding['input_ids'] = encoding['input_ids'].long() 
+    encoding['bbox'] = encoding['bbox'].long()
+    
+    output = layoutmodel(**encoding) 
+    
+    
+    pred = output.logits.argmax(-1).detach().cpu()[0]
+    
+    
+    predictions =[ idx2lb[k.item()] for k,v in zip(pred,lb[0]) if v != -100 ]
+    
+    
+    return {"predictions":predictions,"bbox":bboxes,"text":text}
 
 
 
