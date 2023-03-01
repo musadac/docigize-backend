@@ -13,6 +13,7 @@ from PIL import Image
 from bson import ObjectId
 from IPython.display import display
 import torch
+import random
 cors = CORS(app)
 
 client = MongoClient("mongodb+srv://musa:1221@cluster0.ps9aijg.mongodb.net/test")
@@ -122,6 +123,8 @@ labels = ['B-MEDICINE DOSE','I-MEDICINE DOSE','B-DIAGNOSIS','I-DIAGNOSIS','B-HIS
             'B-BP','B-MEDICINE TYPE','B-MEDICINE NAME','B-MEDICINE POWER','B-NAME','B-GENDER','B-DATE','B-AGE',\
                 'B-TEMP','B-WEIGHT']
 
+
+label2color = {lb:f"rgb({random.randint(0,255)},{random.randint(0,255)},{random.randint(0,255)})"  for lb in labels}
 label2idx ={lb:idx  for idx,lb in enumerate(labels)}
 idx2lb ={idx:lb  for idx,lb in enumerate(labels)}
 num_labels = len(labels)
@@ -362,10 +365,14 @@ def endtoend():
     
     
     predictions =[ idx2lb[k.item()] for k,v in zip(pred,lb[0]) if v != -100 ]
+    
+    colors = [label2color[i]  for i in predictions]
+    
     products.update_one({"_id" : temp['_id']}, {"$set" : {"generated_text" :generated_text}})
     products.update_one({"_id" : temp['_id']}, {"$set" : {"predictions" :predictions}})
+    products.update_one({"_id" : temp['_id']}, {"$set" : {"colors" :colors}})
     
-    return {"predictions":predictions,"bbox":bboxes,"text":text}
+    return {"predictions":predictions,"bbox":bboxes,"text":text,"colors":colors}
 
 
 
