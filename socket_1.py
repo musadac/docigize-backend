@@ -1,5 +1,3 @@
-
-from flask_cors import CORS, cross_origin
 from flask import Flask, request, jsonify
 from datetime import datetime
 import pymongo
@@ -12,7 +10,7 @@ from flask_socketio import send, emit
 
 app = Flask(__name__)
 cors = CORS(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 client = MongoClient("mongodb+srv://musa:1234@cluster0.ps9aijg.mongodb.net/test")
 db = client.users
 grid_fs = gridfs.GridFS(db)
