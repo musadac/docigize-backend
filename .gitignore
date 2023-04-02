@@ -4,4 +4,3 @@ __pycache__
 .ipynb_checkpoints
 yolov5 output.png
 trocr-trained-best
-model_layout-1
