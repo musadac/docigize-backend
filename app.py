@@ -96,9 +96,16 @@ tokenizer = MBartTokenizer.from_pretrained(
 )
 processortext = CustomOCRProcessor(image_processor,tokenizer)
 
-
+image_processor = ViTImageProcessor.from_pretrained(
+    'microsoft/swin-base-patch4-window12-384-in22k'
+)
+tokenizer = MBartTokenizer.from_pretrained(
+    'facebook/mbart-large-50'
+)
+processortext2 = CustomOCRProcessor(image_processor,tokenizer)
 
 model = VisionEncoderDecoderModel.from_pretrained("/Users/musadac/Downloads/LongUrduEngOver").to(device)
+model2 = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-single-urdu",use_auth_token=True).to(device)
 
 model.config.decoder_start_token_id = processortext.tokenizer.cls_token_id
 model.config.pad_token_id = processortext.tokenizer.pad_token_id
@@ -377,6 +384,20 @@ def endtoend():
 @app.route("/hit",methods = ['POST'])
 def hit():
     return {}
+
+import os
+@app.route("/urdu",methods = ['POST'])
+def urdu():
+    file = request.files['image']
+    if file:
+        filename = file.filename
+        file.save(filename) 
+        image_path = os.path.join(filename)
+        i = Image.open(image_path)
+        pixel_values = processortext2(i.convert("RGB"), return_tensors="pt").pixel_values
+        generated_ids = model2.generate(pixel_values.to(device))
+        os.remove(filename)
+        return {'text':processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0]}
 
 if __name__ == "__main__":
     app.run(port = 5000,debug = True,)

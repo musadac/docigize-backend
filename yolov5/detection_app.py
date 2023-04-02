@@ -3,11 +3,12 @@ from yolov5 import app,secure_filename,request,allowed_file
 from PIL import Image
 import pymongo
 from pymongo import MongoClient
-import gridfs
 from flask import Flask, request, jsonify
 from datetime import datetime
-
-
+from bson import ObjectId
+import gridfs
+import base64
+import io
 import torch
 import os
 
@@ -36,8 +37,9 @@ def saveImage(filename,cat,local):
         'time':datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     }
     status = products.insert_one(query)
+    print(status)
     if status:
-        return id
+        return status
     return jsonify({'result': 'Error occurred during uploading'}),500
 
 @app.route("/detect_bounding_box",methods = ['POST'])
@@ -71,7 +73,16 @@ def fetch_bounding_box():
         
         id = saveImage(image_path,request.form['email'],result)
         os.remove(image_path)
-        return {"_id":str(id),"localization":result}
+
+        products = db.docigize
+        image_data = ""
+        for i in products.find({'desc':'mcheema2010@gmail.com', '_id':ObjectId(id)}):
+            image = grid_fs.get(i['id'])
+            imageStream = io.BytesIO(image.read())
+            image_data = base64.b64encode(imageStream.getvalue()).decode('utf-8')
+            break
+
+        return {"_id":str(id),"localization":result, 'image_data':image_data}
     
 
     return {"localization":"Incorrect File Format"}    
