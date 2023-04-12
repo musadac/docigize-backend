@@ -104,18 +104,9 @@ tokenizer = MBartTokenizer.from_pretrained(
 )
 processortext2 = CustomOCRProcessor(image_processor,tokenizer)
 
-model = VisionEncoderDecoderModel.from_pretrained("/Users/musadac/Downloads/LongUrduEngOver").to(device)
+model = VisionEncoderDecoderModel.from_pretrained(r"C:\Users\MusaDAC\Downloads\MedicalViLanOCR").to(device)
 model2 = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-single-urdu",use_auth_token=True).to(device)
 
-model.config.decoder_start_token_id = processortext.tokenizer.cls_token_id
-model.config.pad_token_id = processortext.tokenizer.pad_token_id
-model.config.vocab_size = model.config.decoder.vocab_size
-model.config.eos_token_id = processortext.tokenizer.sep_token_id
-model.config.max_length = 10
-model.config.early_stopping = True
-model.config.no_repeat_ngram_size = 3
-model.config.length_penalty = 2.0
-model.config.num_beams = 3
 #microsoft/trocr-large-handwritten
 #./trocr-trained-best
 print('Loaded TROCR ✅')
@@ -233,9 +224,9 @@ def get_text():
     generated_text = []
     count = 0
     for i in allimg:
-        pixel_values = processortext(i.convert("RGB"), return_tensors="pt").pixel_values
+        pixel_values = processortext2(i.convert("RGB"), return_tensors="pt").pixel_values
         generated_ids = model.generate(pixel_values.to(device))
-        generated_text.append(processortext.batch_decode(generated_ids, skip_special_tokens=True)[0])
+        generated_text.append(processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0])
         # if(temp['localization'][count]['label_name'] == 'English'):
         #     generated_ids = model.generate(pixel_values.to(device))
         # else:
@@ -336,9 +327,9 @@ def endtoend():
     generated_text = []
     count = 0
     for i in allimg:
-        pixel_values = processortext(i.convert("RGB"), return_tensors="pt").pixel_values
+        pixel_values = processortext2(i.convert("RGB"), return_tensors="pt").pixel_values
         generated_ids = model.generate(pixel_values.to(device))
-        generated_text.append(processortext.batch_decode(generated_ids, skip_special_tokens=True)[0])
+        generated_text.append(processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0])
 
 
 
@@ -346,8 +337,10 @@ def endtoend():
     
     text =  generated_text
     bboxes = []
+    fullloc = []
     for i in temp['localization']:
         bboxes.append(i['bbox'])
+        fullloc.append(i)
     
     normalize_bbox = [normalize_the_bbox([bbox[0],bbox[1],bbox[0]+bbox[2],bbox[1]+bbox[3]],img_width=img_width,img_height=img_height) for bbox in bboxes]
     
@@ -379,7 +372,7 @@ def endtoend():
     products.update_one({"_id" : temp['_id']}, {"$set" : {"predictions" :predictions}})
     products.update_one({"_id" : temp['_id']}, {"$set" : {"colors" :colors}})
     
-    return {"predictions":predictions,"bbox":bboxes,"text":text,"colors":colors}
+    return {"localization":fullloc, "predictions":predictions,"bbox":bboxes,"text":text,"colors":colors}
 
 @app.route("/hit",methods = ['POST'])
 def hit():
@@ -400,4 +393,4 @@ def urdu():
         return {'text':processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0]}
 
 if __name__ == "__main__":
-    app.run(port = 5000,debug = True,)
+    app.run(host='192.168.18.18',port = 5000, debug=True)

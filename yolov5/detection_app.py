@@ -39,7 +39,7 @@ def saveImage(filename,cat,local):
     status = products.insert_one(query)
     print(status)
     if status:
-        return status
+        return status.inserted_id
     return jsonify({'result': 'Error occurred during uploading'}),500
 
 @app.route("/detect_bounding_box",methods = ['POST'])
