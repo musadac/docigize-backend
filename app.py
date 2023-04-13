@@ -104,7 +104,7 @@ tokenizer = MBartTokenizer.from_pretrained(
 )
 processortext2 = CustomOCRProcessor(image_processor,tokenizer)
 
-model = VisionEncoderDecoderModel.from_pretrained(r"C:\Users\MusaDAC\Downloads\MedicalViLanOCR").to(device)
+model = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-multi-medical").to(device)
 model2 = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-single-urdu",use_auth_token=True).to(device)
 
 #microsoft/trocr-large-handwritten
