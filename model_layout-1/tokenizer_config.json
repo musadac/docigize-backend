@@ -41,7 +41,7 @@
     "single_word": false
   },
   "model_max_length": 512,
-  "name_or_path": "microsoft/layoutlmv3-base",
+  "name_or_path": "model_layout-1+2",
   "only_label_first_subword": true,
   "pad_token": {
     "__type": "AddedToken",
@@ -76,6 +76,7 @@
   "special_tokens_map_file": null,
   "tokenizer_class": "LayoutLMv3Tokenizer",
   "trim_offsets": true,
+  "trust_remote_code": false,
   "unk_token": {
     "__type": "AddedToken",
     "content": "<unk>",

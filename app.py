@@ -106,6 +106,7 @@ processortext2 = CustomOCRProcessor(image_processor,tokenizer)
 
 model = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-multi-medical",use_auth_token='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').to(device)
 model2 = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-single-urdu",use_auth_token='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').to(device)
+model3 = VisionEncoderDecoderModel.from_pretrained("musadac/ViLanOCR",use_auth_token='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').to(device)
 
 #microsoft/trocr-large-handwritten
 #./trocr-trained-best
@@ -379,17 +380,33 @@ def hit():
     return {}
 
 import os
+from io import BytesIO
 @app.route("/urdu",methods = ['POST'])
 def urdu():
     file = request.files['image']
     if file:
-        filename = file.filename
-        file.save(filename) 
-        image_path = os.path.join(filename)
-        i = Image.open(image_path)
+        # filename = file.filename
+        # file.save(filename) 
+        # file.close()
+        # image_path = os.path.join(filename)
+        i = Image.open(BytesIO(file.read()))
         pixel_values = processortext2(i.convert("RGB"), return_tensors="pt").pixel_values
         generated_ids = model2.generate(pixel_values.to(device))
-        os.remove(filename)
+        # os.remove(filename)
+        return {'text':processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0]}
+
+@app.route("/urdumulti",methods = ['POST'])
+def urdu():
+    file = request.files['image']
+    if file:
+        # filename = file.filename
+        # file.save(filename) 
+        # file.close()
+        # image_path = os.path.join(filename)
+        i = Image.open(BytesIO(file.read()))
+        pixel_values = processortext2(i.convert("RGB"), return_tensors="pt").pixel_values
+        generated_ids = model3.generate(pixel_values.to(device))
+        # os.remove(filename)
         return {'text':processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0]}
 
 if __name__ == "__main__":

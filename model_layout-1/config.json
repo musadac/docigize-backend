@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "microsoft/layoutlmv3-base",
+  "_name_or_path": "model_layout-1+2",
   "architectures": [
     "LayoutLMv3ForTokenClassification"
   ],
@@ -69,7 +69,7 @@
   "shape_size": 128,
   "text_embed": true,
   "torch_dtype": "float32",
-  "transformers_version": "4.22.2",
+  "transformers_version": "4.26.1",
   "type_vocab_size": 1,
   "visual_embed": true,
   "vocab_size": 50265
