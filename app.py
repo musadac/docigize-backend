@@ -393,4 +393,4 @@ def urdu():
         return {'text':processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0]}
 
 if __name__ == "__main__":
-    app.run(host='192.168.18.18',port = 5000, debug=True)
+    app.run(host='172.26.48.1',port = 5000)
