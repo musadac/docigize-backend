@@ -14,6 +14,8 @@ from bson import ObjectId
 from IPython.display import display
 import torch
 import random
+torch.set_num_threads(1)
+import hashlib
 cors = CORS(app)
 
 client = MongoClient("mongodb+srv://musa:1221@cluster0.ps9aijg.mongodb.net/test")
@@ -129,7 +131,7 @@ idx2lb ={idx:lb  for idx,lb in enumerate(labels)}
 num_labels = len(labels)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model_path = "model_layout-1"    ### LayoutLM path
+model_path = "model_layout-1-old"    ### LayoutLM path
 max_length = 128
 
 #################################################
@@ -396,7 +398,7 @@ def urdu():
         return {'text':processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0]}
 
 @app.route("/urdumulti",methods = ['POST'])
-def urdu():
+def murdu():
     file = request.files['image']
     if file:
         # filename = file.filename
@@ -408,6 +410,53 @@ def urdu():
         generated_ids = model3.generate(pixel_values.to(device))
         # os.remove(filename)
         return {'text':processortext2.batch_decode(generated_ids, skip_special_tokens=True)[0]}
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    data = request.get_json()
+    email = data['email']
+    password = data['password']
+    users = db.creds
+    if not email or not password:
+        return jsonify({'error': 'Missing email or password'}), 200
+
+    user = users.find_one({'email': email})
+
+    if user:
+        return jsonify({'error': 'email already exists'}), 200
+
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+    new_user = {
+        'email': email,
+        'password': hashed_password,
+        'preference':[]
+    }
+    users.insert_one(new_user)
+
+    return jsonify({'message': 'User created successfully'}), 200
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data['email']
+    password = data['password']
+
+    if not email or not password:
+        return jsonify({'error': 'Missing email or password'}), 200
+    users = db.creds
+    user = users.find_one({'email': email})
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 200
+
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+    if user['password'] != hashed_password:
+        return jsonify({'error': 'Invalid password'}), 200
+
+    return jsonify({'message': 'Logged in successfully'}), 200
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0',port = 5000)
