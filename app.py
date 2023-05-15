@@ -131,7 +131,7 @@ idx2lb ={idx:lb  for idx,lb in enumerate(labels)}
 num_labels = len(labels)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model_path = "model_layout-1-old"    ### LayoutLM path
+model_path = "musadac/layoutLM"    ### LayoutLM path
 max_length = 128
 
 #################################################
@@ -177,9 +177,9 @@ def normalize_the_bbox(bbox,img_width,img_height):
 
 
 ### Initializing the model ####
-processor = AutoProcessor.from_pretrained(model_path, apply_ocr=False)
+processor = AutoProcessor.from_pretrained(model_path,use_auth_token='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', apply_ocr=False)
 
-layoutmodel = LayoutLMv3ForTokenClassification.from_pretrained(model_path,
+layoutmodel = LayoutLMv3ForTokenClassification.from_pretrained(model_path, use_auth_token='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',
                                                           num_labels=num_labels)
 
 
@@ -187,18 +187,6 @@ layoutmodel.to(device)
 print("Loading the layout LM model")
 
 ##############################################################################################################################
-@app.route('/login',methods = ['POST', 'GET'])
-def login():
-    products = db.creds
-    data = request.json
-    products.insert_one({
-    'name': 'Musa Cheema',
-    'email': 'mcheema2010@gmail.com',
-    'password': '1234',
-    })
-    return jsonify(data)
-
-
 
 
 def cropimages(img, bbox):
@@ -241,10 +229,11 @@ def get_text():
 
 @app.route("/all_docs",methods = ['POST'])
 def get_image():
-#    data = request.json
+    data = request.json
     products = db.docigize
     alldoc = []
-    for i in products.find({'desc':'mcheema2010@gmail.com'}):
+    print(data)
+    for i in products.find({'desc':data['id']}):
         alldoc.append(i)
     for i in alldoc:
         image = grid_fs.get(i['id'])

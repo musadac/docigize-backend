@@ -70,13 +70,13 @@ def fetch_bounding_box():
         except:
             print(f"Error in sorting")
             print(f"Using unsorted values")
-        
+        print(request.files['email'])
         id = saveImage(image_path,request.form['email'],result)
         os.remove(image_path)
 
         products = db.docigize
         image_data = ""
-        for i in products.find({'desc':'mcheema2010@gmail.com', '_id':ObjectId(id)}):
+        for i in products.find({'desc':request.files['email'], '_id':ObjectId(id)}):
             image = grid_fs.get(i['id'])
             imageStream = io.BytesIO(image.read())
             image_data = base64.b64encode(imageStream.getvalue()).decode('utf-8')
