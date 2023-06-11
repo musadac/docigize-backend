@@ -4,8 +4,9 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y git
 
-RUN git clone git@github.com:DevAlplaar/MIM_ADMIN_SERVER.git
-WORKDIR MIM_ADMIN_SERVER
+WORKDIR /app
+
+COPY . .
 
 RUN rm /root/.ssh/id_ed25519
 RUN pip install --no-cache-dir -r requirements.txt
