@@ -55,3 +55,4 @@ jobs:
           context: .
           push: true
           tags: musadac/docigize-backend:latest
+          
