@@ -16,7 +16,7 @@ imgsz = [416,416]
 
 conf_thres =0.4
 
-client = MongoClient("mongodb+srv://musa:1221@cluster0.ps9aijg.mongodb.net/test")
+client = MongoClient("mongodb+srv://<>:<>@<>")
 db = client.users
 grid_fs = gridfs.GridFS(db)
 products = db.docigize
