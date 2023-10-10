@@ -18,7 +18,7 @@ torch.set_num_threads(1)
 import hashlib
 cors = CORS(app)
 
-client = MongoClient("mongodb+srv://musa:1221@cluster0.ps9aijg.mongodb.net/test")
+client = MongoClient("mongodb+srv://<>:<>@<>")
 db = client.users
 grid_fs = gridfs.GridFS(db)
 
@@ -106,9 +106,9 @@ tokenizer = MBartTokenizer.from_pretrained(
 )
 processortext2 = CustomOCRProcessor(image_processor,tokenizer)
 
-model = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-multi-medical",use_auth_token='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').to(device)
-model2 = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-single-urdu",use_auth_token='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').to(device)
-model3 = VisionEncoderDecoderModel.from_pretrained("musadac/ViLanOCR",use_auth_token='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').to(device)
+model = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-multi-medical",use_auth_token='<>').to(device)
+model2 = VisionEncoderDecoderModel.from_pretrained("musadac/vilanocr-single-urdu",use_auth_token='<>').to(device)
+model3 = VisionEncoderDecoderModel.from_pretrained("musadac/ViLanOCR",use_auth_token='<>').to(device)
 
 #microsoft/trocr-large-handwritten
 #./trocr-trained-best
@@ -177,9 +177,9 @@ def normalize_the_bbox(bbox,img_width,img_height):
 
 
 ### Initializing the model ####
-processor = AutoProcessor.from_pretrained(model_path,use_auth_token='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', apply_ocr=False)
+processor = AutoProcessor.from_pretrained(model_path,use_auth_token='<>', apply_ocr=False)
 
-layoutmodel = LayoutLMv3ForTokenClassification.from_pretrained(model_path, use_auth_token='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',
+layoutmodel = LayoutLMv3ForTokenClassification.from_pretrained(model_path, use_auth_token='<>',
                                                           num_labels=num_labels)
 
 
